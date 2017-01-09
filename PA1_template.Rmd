@@ -1,25 +1,173 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+# Activity Monitoring Devices(Steps)
+## Loading and processing data
+1) Reading in the data file
+```{r readindata, echo=TRUE}
+setwd("F:\\Coursera\\Course 5 Reproducible Research\\Project 1")
+step_data <- read.csv("activity.csv", stringsAsFactors = FALSE)
+step_data$date <- as.Date(step_data$date, format = "%Y-%m-%d")
+```
 
+2) Transforming Data and making it more suitable for analysis
 
-## Loading and preprocessing the data
+```{r removeNAs, echo = TRUE}
+# removing NA values
+clean_step_data <- subset(step_data, !is.na(step_data$steps))
+```
 
+## What is the mean total number of steps taken per day?
+1) Calculate the total number of steps taken per day
 
+``` {r sumstepsperday, echo = TRUE}
+# code getting total number of steps taken each day
+sum_steps <- aggregate(steps ~ date, data = clean_step_data, sum)
+```
 
-## What is mean total number of steps taken per day?
+2) Make a histogram of the total number of steps taken per day
 
+```{r creathist, echo = TRUE}
+library(ggplot2)
+# making histogram using ggplot2
+g<- ggplot(data = sum_steps, aes(sum_steps$steps))
+        g + geom_histogram(binwidth = 500) + 
+        labs(title = "Frequency of Step Totals", x = "Total Steps", y= "Frequency") +
+        ylim(0,10.5)
+```
 
+3) Calculate and Report the mean and median of the total number of steps taken per day
+
+```{r mean_median, echo= TRUE}
+overall_mean <- mean(sum_steps$steps)
+overall_median <- median(sum_steps$steps)
+overall_mean
+overall_median
+```
+
+The mean is `r overall_mean`.  The median is `r overall_median`.
 
 ## What is the average daily activity pattern?
+1) Make a time series plot of th e 5-minute interval and average number of steps taken
+averaged across all days
+
+```{r timeplotintervals, echo= TRUE}
+# finding mean number of steps for each interval
+mean_steps_int <- aggregate(steps ~ interval, data = clean_step_data, mean)
+# making plot of average steps taken per interval
+with(mean_steps_int, plot(interval, steps, type = "l",
+        main = "Average Steps Taken Per Interval",
+        xlab = "minutes", ylab = "number of steps"))
+```
+
+2) Which 5 minute interval, on average across all the days in the dataset
+contains the maximum number of steps?
+
+```{r max steps, echo = TRUE}
+interval_steps <- aggregate(steps ~ interval, data = step_data, na.action = na.pass, na.rm = TRUE, mean)
+max_steps <- max(interval_steps$steps)
+maxint <- subset(interval_steps, steps == max_steps)$interval
+```
+
+Interval `r maxint` has the maximum number of steps on average.
+
+## Imputting missing values
+
+1) Calculate and report the total number of missing values in the dataset
+
+```{r missingdata, echo = TRUE}
+missingsteps <- sum(is.na(step_data$steps))
+```
+
+There are `r missingsteps` missing steps in the dataset.
+
+2) Getting values to replace all missing values in the dataset
+The strategy I chose was to replace all missing values with the average value
+for that interval.  The value was found using the getMeansteps function.
+
+``` {r getmeansteps, echo = TRUE}
+
+# Function for getting mean steps in an interval
+getMeanSteps <- function(interval){
+        interval_steps[interval_steps$interval == interval,]$steps
+}
+
+```
+
+3) Creating a new dataset equal to the original dataset but with missing data
+filled in.
+
+``` {r fillnas, echo = TRUE}
+# loops through data set and replaces all NA's with mean for the 
+# corresponding interval
+for(i in 1:nrow(step_data)){
+        if(is.na(step_data[i,]$steps)){
+                step_data$steps[i] <- getMeanSteps(step_data$interval[i])
+        }
+}
+```
+
+4) Making a histogram of the total number of steps taken each day and 
+Calculating and Reporting the mean and median total number of steps per day.
+
+``` {r histtotalsteps, echo = TRUE}
+library(ggplot2)
+# code getting total number of steps taken each day
+sum_steps_nomiss <- aggregate(steps ~ date, data = step_data, sum)
 
 
+# making histogram
+g<- ggplot(data = sum_steps_nomiss, aes(sum_steps_nomiss$steps))
+g + geom_histogram(binwidth = 500) + ylim(0,12) +
+        labs(title = "Frequency of Step Totals", x = "Total Steps", y= "Frequency")
+```
 
-## Imputing missing values
+``` {r newmeanmeadian, echo = TRUE}
+# Calculating Mean total number of steps per day
+new_mean <- mean(sum_steps_nomiss$steps)
+new_median <- median(sum_steps_nomiss$steps)
+new_mean
+new_median
+```
+
+The original mean is `r overall_mean`.  The original median is `r overall_median`.
+Then we replaced the NAs with the mean for each interval.
+The new mean is  `r new_mean` and the new median is `r new_median`.
+
+After replacing the missing values with the average for their corresponding interval,
+the mean stayed the same and the median increased by 1.
+
+In the histograms the data is less skewed and more normally distributed around
+the mean after the missing values are replaced.
+
+## Are there differences in the activity patterns between weekends and weekdays?
+1) Adding a new varialbe to step_data to determine if observations are on 
+a weekday or weekend.  Then finding mean for each interval for weekends and weekdays.
+
+``` {r dayofweek}
+# creating factor variable showing whether day is a weekday
+step_data$weekend <- weekdays(step_data$date) %in% c("Saturday", "Sunday")
+
+# relabeling TRUE with weekend False with Weekday
+for (i in 1: nrow(step_data)){ 
+        if(step_data$weekend[i] == TRUE){
+                step_data$weekend[i] <- "Weekend"
+        } else if (step_data$weekend[i] == FALSE){
+                step_data$weekend[i]<- "Weekday"
+        }
+}
+
+# getting averages for weekend intervals and weekday intervals
+dow_means <- aggregate(steps ~ interval + weekend, step_data, mean)
 
 
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+2) Making a panel plot containing a time series plot of average number of 
+steps taken, where interval is the time used.
+
+``` {r panelplot}
+
+library(lattice)
+xyplot(steps ~ interval| weekend, data = dow_means, type = 'l', layout = c(1,2),
+       main = "Average Steps Per Day by Interval")
+
+```
+
