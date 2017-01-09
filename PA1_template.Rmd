@@ -2,7 +2,7 @@
 ## Loading and processing data
 1) Reading in the data file
 ```{r readindata, echo=TRUE}
-setwd("F:\\Coursera\\Course 5 Reproducible Research\\Project 1")
+setwd("F:\\Coursera\\Course 5 Reproducible Research\\Project 1\\uploadproj1\\RepData_PeerAssessment1")
 step_data <- read.csv("activity.csv", stringsAsFactors = FALSE)
 step_data$date <- as.Date(step_data$date, format = "%Y-%m-%d")
 ```
